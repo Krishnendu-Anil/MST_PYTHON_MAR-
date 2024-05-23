@@ -1,0 +1,131 @@
+from flask import Flask,render_template,request
+import mysql.connector
+
+connection= mysql.connector.connect(
+    host='localhost',
+    user='root',
+    password='Anil@123',
+    database='recipehub')
+
+mycursor = connection.cursor()
+#create a flask application
+app = Flask(__name__)
+
+user_dict = {'admin' : '1234', 'user' : '4567'}
+
+@app.route('/')
+def home():
+    return render_template('home.html')
+
+
+@app.route('/contact')
+def contact():
+    return render_template('contact.html')
+
+
+@app.route('/reviews')
+def reviews():
+    query="select * from comments"
+    mycursor.execute(query)
+    data = mycursor.fetchall()
+    return render_template('review.html',sqldata=data)
+
+@app.route('/recipe')
+def recipe():
+    query="select * from recipes"
+    mycursor.execute(query)
+    data = mycursor.fetchall()
+    return render_template('recipe.html',sqldata=data)
+
+@app.route('/aboutus')
+def aboutus():
+    return render_template('about.html')
+
+
+@app.route('/login')
+def login():
+    return render_template('login.html')
+
+@app.route('/loginhome', methods = ['POST'])
+def loginhome():
+    user = request.form["user"]
+    pwd = request.form["pass"]
+    if user not in user_dict:
+        return render_template('login.html',msg = "Invalid User")
+    elif user_dict[user]!=pwd:
+        return render_template('login.html', msg= "Password wrong" )
+    else:
+        return render_template('recipe_home.html', msg= "Welcome " +user)
+    
+@app.route('/view')
+def view():
+    query = "select * from recipes"
+    mycursor.execute(query)
+    data = mycursor.fetchall()
+    return render_template('view_all.html',sqldata = data)
+
+@app.route('/add')
+def add():
+    return render_template('addrecipe.html')
+@app.route('/add_recipe',methods=['GET','POST'])
+def addrecipe():
+    if request.method=='POST':
+        id=request.form['id']
+        name= request.form["name"]
+        ingredients=request.form['ingredients']
+        instructions=request.form['instructions']
+        time=request.form['time']
+        size=request.form['size']
+        userid=request.form['userid'] 
+        query="insert into recipes values(%s,%s,%s,%s,%s,%s,%s)"
+        data=(id,name,ingredients,instructions,time,size,userid)
+        mycursor.execute(query,data)
+        connection.commit()
+        return render_template('recipe_home.html')
+    return render_template('addrecipe.html')
+
+
+
+
+@app.route('/update',methods=['GET','POST'])
+def update():
+    if request.method=='POST':
+        id=request.form['id']
+        name= request.form['name']
+        ingredients=request.form['ingredients']
+        instructions=request.form['instructions']
+        cooking_time=request.form['cooking_time']
+        serving_size=request.form['serving_size']
+        user_id=request.form['user_id'] 
+        query="update recipes set name=%s,ingredients=%s,instructions=%s,cooking_time=%s,serving_size=%s,user_id=%s where id=%s"
+        data=(name,ingredients,instructions,cooking_time,serving_size,user_id,id)
+        mycursor.execute(query,data)
+        connection.commit()
+        message = f"Recipe with recipe id={id} updated succesfully"
+        return render_template('update.html',msg=message)
+    return render_template('update.html')
+
+@app.route('/delete',methods=['GET','POST'])
+def delete():
+    if request.method =='POST':
+        id = request.form['id']
+        query = "delete from recipes where id=%s"
+        data=(id,)
+        mycursor.execute(query,data)
+        connection.commit()
+        message=f"Recipe with id {id} deleted succesfully"
+        query="select * from recipes"
+        mycursor.execute(query)
+        data = mycursor.fetchall()
+        return render_template('delete.html',sqldata=data,msg=message)
+    else:
+        query="select * from recipes"
+        mycursor.execute(query)
+        data = mycursor.fetchall()
+        return render_template('delete.html',sqldata=data)
+
+
+
+#run flask application
+if __name__ == '__main__':
+    app.run(debug = True)
